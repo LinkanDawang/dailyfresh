@@ -1,15 +1,18 @@
 import json
 
-from django.shortcuts import render
+from django.core.paginator import Paginator, EmptyPage
+from django.core.urlresolvers import reverse
+from django.shortcuts import render, redirect
 from django_redis import get_redis_connection
 from django.core.cache import cache
 from django.views.generic import View
 
-from goods.models import GoodsCategory, IndexGoodsBanner, IndexPromotionBanner, IndexCategoryGoodsBanner
+from goods.models import GoodsCategory, IndexGoodsBanner, IndexPromotionBanner, IndexCategoryGoodsBanner, GoodsSKU
 
 
 class BaseCart(View):
     """获取购物车商品的数量"""
+
     def get_cart_num(self, request):
         user = request.user
         cart_num = 0
@@ -34,6 +37,7 @@ class BaseCart(View):
 
 class IndexView(BaseCart):
     """商品主页"""
+
     def get(self, request):
         # 主页数据先从缓存从查找
         context = cache.get('index_cache_data')
@@ -49,11 +53,13 @@ class IndexView(BaseCart):
             # 遍历所有的商品类别
             for category in categorys:
                 # 获取不带图片的类别
-                title_banners = IndexCategoryGoodsBanner.objects.filter(category=category, display_type=0).order_by('index')
+                title_banners = IndexCategoryGoodsBanner.objects.filter(category=category, display_type=0).order_by(
+                    'index')
                 category.title_banners = title_banners
 
                 # 获取带图片的数据
-                image_banners = IndexCategoryGoodsBanner.objects.filter(category=category, display_type=1).order_by('index')
+                image_banners = IndexCategoryGoodsBanner.objects.filter(category=category, display_type=1).order_by(
+                    'index')
                 category.image_banners = image_banners
 
             context = {
@@ -72,4 +78,80 @@ class IndexView(BaseCart):
         context['cart_num'] = cart_num
 
         return render(request, 'index.html', context)
+
+
+class DetailView(BaseCart):
+    """商品详情页的视图函数"""
+
+    # 需要的数据
+    # 1.商品的类别
+    # 2.当前商品的sku
+    # 3.当前商品的spu（当前类别其他商品的sku）
+    # 4.新品推荐商品
+    # 5.商品的评论信息
+    # 6.购物车的商品信息
+
+    def get(self, request, sku_id):
+        # 先从缓存中获取数据
+        context = cache.get("detail_%s" % sku_id)
+
+        if context is None:
+            try:
+                # 获取当前商品的sku
+                sku = GoodsSKU.objects.get(id=sku_id)
+            except GoodsSKU.DoesNotExist:
+                return redirect(reverse('goods:index'))
+
+            # 获取所有的商品类别
+            categorys = GoodsCategory.objects.all()
+
+            # 从订单中获取评论信息，评论存在多个订单中
+            sku_orders = sku.ordergoods_set.all().order_by('-create_time')[0:30]
+            if sku_orders:
+                for sku_order in sku_orders:
+                    sku_order.ctime = sku_order.create_time.strftime('%Y-%m-%d %H:%M:%S')
+                    sku_order.username = sku_order.order.user.username
+            else:
+                sku_orders = []
+
+            # 获取新品推荐的商品
+            new_skus = GoodsSKU.objects.filter(category=sku.category).order_by('-create_time')[0:2]
+
+            # 获取其他规格的商品
+            other_skus = sku.goods.goodssku_set.exclude(id=sku_id)
+
+            context = {
+                "categorys": categorys,
+                "sku": sku,
+                "orders": sku_orders,
+                "new_skus": new_skus,
+                "other_skus": other_skus
+            }
+
+            # 设置缓存
+            cache.set("detail_%s" % sku_id, context, 3600)
+
+        # 获取购物车的商品数量
+        cart_num = self.get_cart_num(request)
+
+        context['cart_num'] = cart_num
+
+        # 用户登入
+        if request.user.is_authenticated():
+            # 获取用户对象
+            user = request.user
+            # 从redis中获取购物车的信息
+            redis_conn = get_redis_connection('default')
+
+            # 把之前相同的商品记删除
+            redis_conn.lrem('history_%s' % user.id, 0, sku_id)
+            # 把当前商品添加到历史记录
+            redis_conn.lpush('history_%s' % user.id, sku_id)
+            # 最多只保存5条商品记录，ltrim截取前5个，删除其余的记录
+            redis_conn.ltrim('history_%s' % user.id, 0, 4)
+
+        return render(request, 'detail.html', context)
+
+
+
 
