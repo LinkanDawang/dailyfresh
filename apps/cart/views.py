@@ -124,3 +124,47 @@ class CartInfoView(View):
 
         return render(request, 'cart.html', context)
 
+
+class UpdateCartView(View):
+    """购物车页面商品的增加和修改"""
+    def post(self, request):
+        user = request.user
+
+        # 获取被修改商品的id和数量
+        sku_id = request.POST.get('sku_id')
+        count = request.POST.get('count')
+
+        # 校验数据
+        if not all([sku_id, count]):
+            return JsonResponse({'code': 1, 'msg': '参数不全'})
+        # 查询商品是否存在
+        try:
+            sku = GoodsSKU.objects.get(id=sku_id)
+        except GoodsSKU.DoesNotExist:
+            return JsonResponse({'code': 2, 'msg': '不存在该商品'})
+        # 检查商品数量是否正确
+        try:
+            count = int(count)
+        except Exception as e:
+            return JsonResponse({'code': 3, 'msg': '%s' % e})
+        # 判断商品的库存
+        if count > sku.stock:
+            return JsonResponse({'code': 4, 'msg': '数量超出库存'})
+
+        # 通过校验，更新购物车的商品数据
+        if user.is_authenticated():  # 用户登入了
+            redis_conn = get_redis_connection('default')
+            redis_conn.hset('cart_%s' % user.id, sku_id, count)
+            return JsonResponse({'code': 0, 'msg': '更新购物车成功'})
+        else:  # 用户未登入,修改浏览器cookies中的数据并保存
+            cart_json = request.COOKIES.get('cart')
+            if cart_json:
+                cart_dict = json.loads(cart_json)
+            else:
+                cart_dict = {}
+            cart_dict[sku_id] = count
+            response = JsonResponse({'code': 0, 'msg': '更新购物车成功'})
+
+            response.set_cookie('cart', json.dumps(cart_dict))
+            return response
+
