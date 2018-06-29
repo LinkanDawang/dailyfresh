@@ -8,6 +8,7 @@ from goods.models import GoodsSKU
 
 class AddCartView(View):
     """添加商品到购物车功能"""
+
     def post(self, request):
         # 获取添加到购物车的商品和数量
         sku_id = request.POST.get('sku_id')
@@ -76,4 +77,50 @@ class AddCartView(View):
             response.set_cookie('cart', cart_json)
 
         return response
+
+
+class CartInfoView(View):
+    """购物车页面"""
+
+    def get(self, request):
+        # 用户登入，从redis中获取数据， 用户未登入，从浏览器cookie获取数据
+        user = request.user
+
+        if user.is_authenticated():
+            redis_conn = get_redis_connection('default')
+            # 获取所有的数据
+            cart_dict = redis_conn.hget('cart_%s' % user.id)
+        else:
+            cart_json = request.COOKIES.get('cart')
+            if cart_json is not None:
+                cart_dict = json.loads(cart_json)
+            else:
+                cart_dict = {}
+
+        total_count = 0  # 用于计算全部商品的数量
+        total_amount = 0  # 用于计算全部商品的总价
+        skus = []
+
+        # 遍历所有的商品
+        for sku_id, count in cart_dict.items():
+            try:
+                sku = GoodsSKU.objects.get(id=sku_id)
+            except GoodsSKU.DoesNotExist:
+                continue
+
+            count = int(count)
+            amount = count * sku.price
+            sku.count = count
+            sku.amount = amount
+            total_amount += amount
+            total_count += count
+            skus.append(sku)
+
+        context = {
+            'skus': skus,
+            'total_count': total_count,
+            'total_amount': total_amount
+        }
+
+        return render(request, 'cart.html', context)
 
