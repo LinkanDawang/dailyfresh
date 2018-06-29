@@ -89,7 +89,7 @@ class CartInfoView(View):
         if user.is_authenticated():
             redis_conn = get_redis_connection('default')
             # 获取所有的数据
-            cart_dict = redis_conn.hget('cart_%s' % user.id)
+            cart_dict = redis_conn.hgetall('cart_%s' % user.id)
         else:
             cart_json = request.COOKIES.get('cart')
             if cart_json is not None:
@@ -167,4 +167,34 @@ class UpdateCartView(View):
 
             response.set_cookie('cart', json.dumps(cart_dict))
             return response
+
+
+class DeleteCartView(View):
+    """删除购物车中的商品"""
+    def post(self, request):
+        user = request.user
+
+        # 获取被删除的商品id
+        sku_id = request.POST.get('sku_id')
+
+        # 校验数据
+        if not sku_id:
+            return JsonResponse({'code': 1, 'msg': '参数错误'})
+
+        # 用户登入，修改redis中的数据
+        if user.is_authenticated():
+            redis_conn = get_redis_connection('default')
+            redis_conn.hdel('cart_%s' % user.id, sku_id)
+            return JsonResponse({'code': 0, 'msg': '删除成功'})
+        # 用户未登入，从浏览器cookies中删除商品的数据
+        else:
+            cart_json = request.COOKIES.get('cart')
+            if cart_json:
+                cart_dict = json.loads(cart_json)
+                if sku_id in cart_dict:
+                    del cart_dict[sku_id]
+                    response = JsonResponse({'code': 0, 'msg': '删除成功'})
+                    response.set_cookie('cart', json.dumps(cart_dict))
+                    return response
+
 
