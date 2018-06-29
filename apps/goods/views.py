@@ -31,7 +31,7 @@ class BaseCart(View):
                 cart = {}
 
         for value in cart.values():
-            cart_num += value
+            cart_num += int(value)
         return cart_num
 
 
