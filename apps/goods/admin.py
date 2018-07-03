@@ -17,7 +17,7 @@ class BaseAdmin(admin.ModelAdmin):
         print('在后台修改了数据')
 
     def delete_model(self, request, obj):
-        obj.save()
+        obj.delete()
         # generate_index.si().delay()
         static_index.si().delay()
         cache.delete('index_cache_data')
