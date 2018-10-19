@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.views.generic import TemplateView
 
 urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
+    # url(r'^admin/', include(admin.site.urls)),
     # url(r'^.*$', TemplateView.as_view(template_name="static_ok_index.html")),  # 用户模块
     url(r'^users/', include('users.urls', namespace='users')),  # 用户模块
     url(r'^goods/', include('goods.urls', namespace='goods')),  # 商品模块

@@ -50,8 +50,8 @@ class OrderInfo(BaseModel):
     }
 
     order_id = models.CharField(max_length=64, primary_key=True, verbose_name="订单号")
-    user = models.ForeignKey(User, verbose_name="下单用户")
-    address = models.ForeignKey(Address, verbose_name="收获地址")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="下单用户")
+    address = models.ForeignKey(Address, on_delete=models.CASCADE, verbose_name="收获地址")
     total_count = models.IntegerField(default=1, verbose_name="商品总数")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="商品总金额")
     trans_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="运费")
@@ -65,8 +65,8 @@ class OrderInfo(BaseModel):
 
 class OrderGoods(BaseModel):
     """订单商品"""
-    order = models.ForeignKey(OrderInfo, verbose_name="订单")
-    sku = models.ForeignKey(GoodsSKU, verbose_name="订单商品")
+    order = models.ForeignKey(OrderInfo, on_delete=models.CASCADE, verbose_name="订单")
+    sku = models.ForeignKey(GoodsSKU, on_delete=models.CASCADE, verbose_name="订单商品")
     count = models.IntegerField(default=1, verbose_name="数量")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="单价")
     comment = models.TextField(default="", verbose_name="评价信息")

@@ -37,8 +37,8 @@ class Goods(BaseModel):
 
 class GoodsSKU(BaseModel):
     """商品SKU表"""
-    category = models.ForeignKey(GoodsCategory, verbose_name="类别")
-    goods = models.ForeignKey(Goods, verbose_name="商品")
+    category = models.ForeignKey(GoodsCategory, on_delete=models.CASCADE, verbose_name="类别")
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name="商品")
     name = models.CharField(max_length=100, verbose_name="名称")
     title = models.CharField(max_length=200, verbose_name="简介")
     unit = models.CharField(max_length=10, verbose_name="销售单位")
@@ -59,7 +59,7 @@ class GoodsSKU(BaseModel):
 
 class GoodsImage(BaseModel):
     """商品图片"""
-    sku = models.ForeignKey(GoodsSKU, verbose_name="商品SKU")
+    sku = models.ForeignKey(GoodsSKU, on_delete=models.CASCADE, verbose_name="商品SKU")
     image = models.ImageField(upload_to="goods", verbose_name="图片")
 
     class Meta:
@@ -73,7 +73,7 @@ class GoodsImage(BaseModel):
 
 class IndexGoodsBanner(BaseModel):
     """主页轮播商品展示"""
-    sku = models.ForeignKey(GoodsSKU, verbose_name="商品SKU")
+    sku = models.ForeignKey(GoodsSKU, on_delete=models.CASCADE, verbose_name="商品SKU")
     image = models.ImageField(upload_to="banner", verbose_name="图片")
     index = models.SmallIntegerField(default=0, verbose_name="顺序")
 
@@ -92,8 +92,8 @@ class IndexCategoryGoodsBanner(BaseModel):
         (0, "标题"),
         (1, "图片")
     )
-    category = models.ForeignKey(GoodsCategory, verbose_name="商品类别")
-    sku = models.ForeignKey(GoodsSKU, verbose_name="商品SKU")
+    category = models.ForeignKey(GoodsCategory, on_delete=models.CASCADE, verbose_name="商品类别")
+    sku = models.ForeignKey(GoodsSKU, on_delete=models.CASCADE, verbose_name="商品SKU")
     display_type = models.SmallIntegerField(choices=DISPLAY_TYPE_CHOICES, verbose_name="展示类型")
     index = models.SmallIntegerField(default=0, verbose_name="顺序")
 

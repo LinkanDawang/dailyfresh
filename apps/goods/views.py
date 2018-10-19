@@ -1,7 +1,8 @@
 import json
 
 from django.core.paginator import Paginator, EmptyPage
-from django.core.urlresolvers import reverse
+# from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.shortcuts import render, redirect
 from django_redis import get_redis_connection
 from django.core.cache import cache
